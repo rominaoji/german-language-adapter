@@ -8,4 +8,4 @@
 
 - The example is for rominaoji/icelandic_lora8.
 
-- The config for LoRa is in [lora_config.json](https://github.com/rominaoji/german-language-adapter/training/lora_config.json)
+- The config for LoRa is in [lora_config.json](https://github.com/rominaoji/german-language-adapter/blob/main/training/lora_config.json)
