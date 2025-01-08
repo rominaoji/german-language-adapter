@@ -1,3 +1,4 @@
+import torch
 import argparse
 import logging
 import numpy as np
@@ -9,6 +10,7 @@ from transformers import (
     DebertaV2Tokenizer,
     EvalPrediction,
     TrainingArguments,
+    get_scheduler,
 )
 from adapters import AdapterTrainer, AutoAdapterModel, init
 
@@ -49,7 +51,7 @@ def load_and_prepare_data(language, tokenizer):
     # Tokenize dataset
     def encode_batch(batch):
         return tokenizer(
-            batch["text"], max_length=80, truncation=True, padding="max_length"
+            batch["text"], max_length=512, truncation=True, padding="max_length"
         )
 
     logger.info("Tokenizing dataset...")
@@ -85,7 +87,9 @@ def perform_cross_validation(dataset, args):
     test_data = dataset["test"]
 
     kf = KFold(n_splits=10, shuffle=True, random_state=42)
-    val_results, test_results = [], []
+
+    val_metrics = {"acc": [], "macro_f1": [], "mcc": []}
+    test_metrics = {"acc": [], "macro_f1": [], "mcc": []}
 
     for fold, (train_idx, val_idx) in enumerate(kf.split(df)):
         logger.info(f"Starting Fold {fold + 1}...")
@@ -99,14 +103,24 @@ def perform_cross_validation(dataset, args):
         model = load_model_with_adapters(args)
 
         training_args = TrainingArguments(
-            learning_rate=8e-4,
-            num_train_epochs=6,
-            per_device_train_batch_size=32,
-            per_device_eval_batch_size=32,
-            logging_steps=200,
-            output_dir=f"./training_output_fold_{fold}",
-            overwrite_output_dir=True,
-            remove_unused_columns=False,
+        output_dir="./training_output",
+        per_device_train_batch_size=16,
+        per_device_eval_batch_size=16,
+        num_train_epochs=10,
+        logging_steps = 1000,
+        save_strategy='no'
+    )
+
+        optimizer = torch.optim.AdamW(model.parameters(), lr=8e-4)
+        num_train_steps = len(train_data) * training_args.num_train_epochs
+
+        num_warmup_steps = 0 
+
+        lr_scheduler = get_scheduler(
+            "linear",  # Or another scheduler type
+            optimizer=optimizer,
+            num_warmup_steps=num_warmup_steps,
+            num_training_steps=num_train_steps
         )
 
         trainer = AdapterTrainer(
@@ -115,15 +129,30 @@ def perform_cross_validation(dataset, args):
             train_dataset=train_data,
             eval_dataset=val_data,
             compute_metrics=compute_metrics,
+            optimizers=(optimizer, lr_scheduler),
         )
 
         trainer.train()
-        val_results.append(trainer.evaluate(eval_dataset=val_data))
-        test_results.append(trainer.evaluate(eval_dataset=test_data))
+        # Evaluate on validation set
+        validation_results = trainer.evaluate(eval_dataset=val_data)
+        print(f"Validation Results: {validation_results}")
 
-        logger.info(f"Fold {fold + 1} complete.")
+        # Store validation metrics
+        val_metrics["acc"].append(validation_results["eval_acc"])
+        val_metrics["macro_f1"].append(validation_results["eval_macro_f1"])
+        val_metrics["mcc"].append(validation_results["eval_mcc"])
 
-    return val_results, test_results
+        # Evaluate on test set
+        test_results = trainer.evaluate(eval_dataset=test_data)
+        print(f"Test Results for Fold {fold + 1}: {test_results}")
+
+        # Store test metrics
+        test_metrics["acc"].append(test_results["eval_acc"])
+        test_metrics["macro_f1"].append(test_results["eval_macro_f1"])
+        test_metrics["mcc"].append(test_results["eval_mcc"])
+
+    return val_metrics, test_metrics
+
 
 
 def load_model_with_adapters(args):
@@ -144,13 +173,13 @@ def load_model_with_adapters(args):
     return model
 
 
-def summarize_results(results):
-    """Summarize and display the results."""
-    metrics = ["acc", "mcc", "macro_f1"]
-    for metric in metrics:
-        scores = [fold[f"eval_{metric}"] for fold in results]
-        mean, std = np.mean(scores), np.std(scores)
-        logger.info(f"{metric.upper()} - Mean: {mean:.4f}, Std: {std:.4f}")
+def summarize_results(metrics):
+    """Summarize results from cross-validation."""
+    mean_metrics = {key: np.mean(values) for key, values in metrics.items()}
+    std_metrics = {key: np.std(values) for key, values in metrics.items()}
+
+    for metric in metrics.keys():
+        print(f"{metric.upper()}: {mean_metrics[metric]*100:.2f} ± {std_metrics[metric]*100:.2f}")
 
 
 def main():
@@ -158,6 +187,7 @@ def main():
     logger.info(
         f"Task Adapter: {args.task_adapter_type}, "
         f"Language Adapter: {args.language_adapter_type}"
+        f"Language: {args.language}"
     )
 
     tokenizer = DebertaV2Tokenizer.from_pretrained("microsoft/mdeberta-v3-base")
