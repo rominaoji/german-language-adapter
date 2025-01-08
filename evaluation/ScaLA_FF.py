@@ -6,6 +6,12 @@ from transformers import (DebertaV2Config, DebertaV2Tokenizer, EvalPrediction,
                           TrainingArguments, Trainer, AutoModelForSequenceClassification, get_scheduler)
 import torch
 import argparse
+import logging
+
+
+# Configure logging
+logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
+logger = logging.getLogger(__name__)
 
 def parse_arguments():
     """Parse command-line arguments."""
@@ -74,7 +80,7 @@ def perform_cross_validation(dataset, num_splits=10):
     test_metrics = {"acc": [], "macro_f1": [], "mcc": []}
 
     for fold, (train_idx, val_idx) in enumerate(kf.split(df)):
-        print(f"Fold {fold + 1}")
+        logger.info(f"Fold {fold + 1}")
 
         # Split the dataset into training and validation based on the fold
         train_data = Dataset.from_pandas(df.iloc[train_idx])
@@ -121,7 +127,7 @@ def perform_cross_validation(dataset, num_splits=10):
 
         # Evaluate on validation set
         validation_results = trainer.evaluate(eval_dataset=val_data)
-        print(f"Validation Results: {validation_results}")
+        logger.info(f"Validation Results: {validation_results}")
 
         # Store validation metrics
         val_metrics["acc"].append(validation_results["eval_acc"])
@@ -130,7 +136,7 @@ def perform_cross_validation(dataset, num_splits=10):
 
         # Evaluate on test set
         test_results = trainer.evaluate(eval_dataset=test_data)
-        print(f"Test Results for Fold {fold + 1}: {test_results}")
+        logger.info(f"Test Results for Fold {fold + 1}: {test_results}")
 
         # Store test metrics
         test_metrics["acc"].append(test_results["eval_acc"])
@@ -140,26 +146,29 @@ def perform_cross_validation(dataset, num_splits=10):
     return val_metrics, test_metrics
 
 def summarize_results(metrics, name):
+
     """Summarize results from cross-validation."""
     mean_metrics = {key: np.mean(values) for key, values in metrics.items()}
     std_metrics = {key: np.std(values) for key, values in metrics.items()}
 
     for metric in metrics.keys():
-        print(f"{name} {metric.upper()}: {mean_metrics[metric]*100:.2f} ± {std_metrics[metric]*100:.2f}")
+        logger.info(f"{name} {metric.upper()}: {mean_metrics[metric]*100:.2f} ± {std_metrics[metric]*100:.2f}")
 
 def main():
     """Main function to run the script."""
     args = parse_arguments()
+    logger.info(f"{args.language} ScaLA Full Finetuning")
+
     dataset = load_and_prepare_data(args.language)
     val_metrics, test_metrics = perform_cross_validation(dataset)
 
-    print("\nCross-Validation Results:")
+    logger.info("\nCross-Validation Results:")
     summarize_results(val_metrics, "Validation")
 
-    print("\nTest Results:")
+    logger.info("\nTest Results:")
     summarize_results(test_metrics, "Test")
 
-    print(f"{args.language} ScaLA Full Finetune!")
+    logger.info(f"{args.language} ScaLA Full Finetuned!")
 
 if __name__ == "__main__":
     main()

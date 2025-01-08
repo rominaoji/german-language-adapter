@@ -163,7 +163,9 @@ def load_model_with_adapters(args):
 
     # Initialize adapters
     init(model)
-    model.load_adapter(f"rominaoji/{args.language_adapter_type}")
+    if args.language_adapter_type:
+        model.load_adapter(f"rominaoji/{args.language_adapter_type}")
+
     model.add_classification_head(
         "taskadapter", num_labels=2, id2label={0: "incorrect", 1: "correct"}
     )
@@ -186,7 +188,7 @@ def main():
     args = parse_arguments()
     logger.info(
         f"Task Adapter: {args.task_adapter_type}, "
-        f"Language Adapter: {args.language_adapter_type}"
+        f"Language Adapter: {args.language_adapter_type}, "
         f"Language: {args.language}"
     )
 
