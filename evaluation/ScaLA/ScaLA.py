@@ -111,7 +111,7 @@ def perform_cross_validation(dataset, args):
         save_strategy='no'
     )
 
-        optimizer = torch.optim.AdamW(model.parameters(), lr=8e-4)
+        optimizer = torch.optim.AdamW(model.parameters(), lr=3e-4)
         num_train_steps = len(train_data) * training_args.num_train_epochs
 
         num_warmup_steps = 0 
@@ -201,6 +201,12 @@ def main():
 
     logger.info("Test Results Summary:")
     summarize_results(test_results)
+
+    logger.info(
+        f"Task Adapter: {args.task_adapter_type}, "
+        f"Language Adapter: {args.language_adapter_type}, "
+        f"Language: {args.language}"
+    )
 
 
 if __name__ == "__main__":
