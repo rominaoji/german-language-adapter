@@ -256,7 +256,7 @@ def calculate_mean_std(metrics):
 def main():
     args = parse_arguments()
 
-    print(f"NQiI islandic task adapter: {args.task_adapter_type} language adapter: {args.language_adapter_type}")
+    print(f"Icelandic QA task adapter: {args.task_adapter_type} language adapter: {args.language_adapter_type}")
 
     raw_datasets = load_and_prepare_dataset()
 
@@ -296,7 +296,7 @@ def main():
     print(f"K-Fold Test Exact Match: {mean_test_exact_match:.2f} ± {std_test_exact_match:.2f}")
     print(f"K-Fold Test F1 Score: {mean_test_f1:.2f} ± {std_test_f1:.2f}")
 
-    print(f"NQiI islandic task adapter: {args.task_adapter_type} language adapter: {args.language_adapter_type}")
+    print(f"Icelandic QA task adapter: {args.task_adapter_type} language adapter: {args.language_adapter_type}")
 
 if __name__ == "__main__":
     main()

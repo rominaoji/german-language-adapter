@@ -242,7 +242,7 @@ def calculate_mean_std(metrics):
 
 def main():
 
-    print(f"NQiI islandic Full Fine-tuning")
+    print(f"Swedish QA Full Fine-tuning")
 
     raw_datasets = load_and_prepare_dataset()
 
@@ -282,7 +282,7 @@ def main():
     print(f"K-Fold Test Exact Match: {mean_test_exact_match:.2f} ± {std_test_exact_match:.2f}")
     print(f"K-Fold Test F1 Score: {mean_test_f1:.2f} ± {std_test_f1:.2f}")
 
-    print(f"NQiI islandic Full Fine-tuning Completed")
+    print(f"Swedish QA Full Fine-tuning Completed")
 
 if __name__ == "__main__":
     main()
